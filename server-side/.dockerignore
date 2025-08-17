@@ -1,4 +1,12 @@
-authorized_keys
+# Git and version control
+.git/
+.gitignore
+
+# Documentation
+README.md
+GUIDELINE.md
+CHANGELOG.md
+*.md
 
 # Operating System Files
 
@@ -8,18 +16,12 @@ authorized_keys
 ._*
 .Spotlight-V100
 .Trashes
-ehthumbs.db
-Thumbs.db
 
 ## Windows
 Thumbs.db
 ehthumbs.db
 Desktop.ini
 $RECYCLE.BIN/
-*.cab
-*.msi
-*.msm
-*.msp
 *.lnk
 
 ## Linux
@@ -51,29 +53,15 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
-.Python
 build/
-develop-eggs/
 dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
 
 # Docker
-.dockerignore
-docker-compose.override.yml
+docker-compose*.yml
+Dockerfile.*
 .docker/
 
-# SSH and Security
+# SSH Keys (security - prevent accidental inclusion)
 *.pem
 *.key
 id_rsa*
@@ -81,3 +69,14 @@ id_ed25519*
 known_hosts
 config
 
+# Build artifacts
+*.tar
+*.zip
+*.gz
+*.bz2
+*.xz
+
+# Backup files
+*.bak
+*.backup
+*.old
