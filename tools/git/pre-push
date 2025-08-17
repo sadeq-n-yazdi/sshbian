@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # SSHBian Pre-push Hook
-# Prevents pushing to main branch if shell scripts fail ShellCheck
+# Prevents pushing to main branch if shell scripts or Dockerfiles fail validation
 
 set -e
 
@@ -9,7 +9,10 @@ set -e
 while IFS=' ' read -r local_ref local_sha remote_ref remote_sha; do
     # Check if we're pushing to main branch
     if [[ $remote_ref == *"refs/heads/main"* ]]; then
-        echo "Pushing to main branch - running comprehensive ShellCheck validation..."
+        echo "Pushing to main branch - running comprehensive validation..."
+        
+        # Track overall success
+        overall_success=true
         
         # Check if shellcheck is installed
         if ! command -v shellcheck >/dev/null 2>&1; then
@@ -20,43 +23,97 @@ while IFS=' ' read -r local_ref local_sha remote_ref remote_sha; do
             exit 1
         fi
         
+        # Check if hadolint is installed
+        if ! command -v hadolint >/dev/null 2>&1; then
+            echo "WARNING: Hadolint is not installed. Dockerfile validation will be skipped."
+            echo "To install Hadolint:"
+            echo "  macOS: brew install hadolint"
+            echo "  Linux: Download from https://github.com/hadolint/hadolint/releases"
+        fi
+        
         # Find all shell scripts in the repository
         shell_scripts=$(find . -name "*.sh" -type f | grep -v ".git/" || true)
         
-        if [ -z "$shell_scripts" ]; then
-            echo "No shell scripts found to check."
-            continue
+        # Find all Dockerfiles in the repository
+        dockerfiles=$(find . -name "Dockerfile*" -o -name "dockerfile*" -o -name "*.dockerfile" -o -name "*.docker" | grep -v ".git/" || true)
+        
+        # Validate shell scripts
+        if [ -n "$shell_scripts" ]; then
+            echo "Validating shell scripts..."
+            
+            # Track failures
+            failed_scripts=()
+            
+            # Check each shell script
+            for script in $shell_scripts; do
+                echo "Checking: $script"
+                
+                if ! shellcheck "$script"; then
+                    failed_scripts+=("$script")
+                    echo "FAILED: $script"
+                else
+                    echo "PASSED: $script"
+                fi
+            done
+            
+            # Report shell script results
+            if [ ${#failed_scripts[@]} -ne 0 ]; then
+                echo ""
+                echo "ERROR: The following shell scripts failed ShellCheck validation:"
+                for script in "${failed_scripts[@]}"; do
+                    echo "  - $script"
+                done
+                overall_success=false
+            else
+                echo "All shell scripts passed validation."
+            fi
         fi
         
-        echo "Validating all shell scripts before push to main..."
-        
-        # Track failures
-        failed_scripts=()
-        
-        # Check each shell script
-        for script in $shell_scripts; do
-            echo "Checking: $script"
+        # Validate Dockerfiles
+        if [ -n "$dockerfiles" ] && command -v hadolint >/dev/null 2>&1; then
+            echo "Validating Dockerfiles..."
             
-            if ! shellcheck "$script"; then
-                failed_scripts+=("$script")
-                echo "FAILED: $script"
+            # Track failures
+            failed_dockerfiles=()
+            
+            # Check each Dockerfile
+            for dockerfile in $dockerfiles; do
+                echo "Checking: $dockerfile"
+                
+                if ! hadolint "$dockerfile"; then
+                    failed_dockerfiles+=("$dockerfile")
+                    echo "FAILED: $dockerfile"
+                else
+                    echo "PASSED: $dockerfile"
+                fi
+            done
+            
+            # Report Dockerfile results
+            if [ ${#failed_dockerfiles[@]} -ne 0 ]; then
+                echo ""
+                echo "ERROR: The following Dockerfiles failed Hadolint validation:"
+                for dockerfile in "${failed_dockerfiles[@]}"; do
+                    echo "  - $dockerfile"
+                done
+                overall_success=false
             else
-                echo "PASSED: $script"
+                echo "All Dockerfiles passed validation."
             fi
-        done
+        elif [ -n "$dockerfiles" ]; then
+            echo "Skipping Dockerfile validation (Hadolint not installed)."
+        fi
         
-        # Report results
-        if [ ${#failed_scripts[@]} -eq 0 ]; then
-            echo "All shell scripts passed ShellCheck validation for main branch."
+        # Final result for main branch push
+        if [ "$overall_success" = true ]; then
+            echo "All validation checks passed for main branch."
         else
             echo ""
-            echo "ERROR: Cannot push to main branch. The following shell scripts failed ShellCheck:"
-            for script in "${failed_scripts[@]}"; do
-                echo "  - $script"
-            done
+            echo "ERROR: Cannot push to main branch due to validation failures."
             echo ""
-            echo "Please fix all ShellCheck warnings/errors before pushing to main."
-            echo "Run 'shellcheck <script>' for detailed error information."
+            echo "Please fix all validation errors before pushing to main."
+            echo "For detailed error information:"
+            echo "  shellcheck <script>    # For shell scripts"
+            echo "  hadolint <dockerfile>  # For Dockerfiles"
             echo ""
             echo "To push to a feature branch instead:"
             echo "  git push origin HEAD:feature-branch-name"

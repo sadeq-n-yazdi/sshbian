@@ -209,15 +209,17 @@ docker exec sshbian-container ps aux
 
 The repository includes automated git hooks to maintain code quality:
 
-**Pre-commit Hook** (`.git/hooks/pre-commit`):
+**Pre-commit Hook** (`tools/git/pre-commit`):
+- Enforces signed commits (requires GPG configuration)
 - Automatically runs ShellCheck on all shell scripts being committed
-- Prevents commits if any shell script fails validation
+- Automatically runs Hadolint on all Dockerfiles being committed
+- Prevents commits if any file fails validation or commit is unsigned
 - Provides clear error messages and fix suggestions
 - Can be bypassed with `git commit --no-verify` (not recommended)
 
-**Pre-push Hook** (`.git/hooks/pre-push`):
-- Validates ALL shell scripts before pushing to main branch
-- Prevents merging broken scripts into main branch
+**Pre-push Hook** (`tools/git/pre-push`):
+- Validates ALL shell scripts and Dockerfiles before pushing to main branch
+- Prevents merging broken files into main branch
 - Allows pushes to feature branches even with warnings
 - Ensures main branch always has clean, validated code
 
@@ -432,6 +434,79 @@ shellcheck server-side/*.sh && docker build -t sshbian-test server-side/
 - Check command success: `if command -v docker; then`
 - Use `[[ ]]` for conditionals instead of `[ ]`
 - Handle empty variables: `${VAR:-default}`
+
+#### Dockerfile Linting with Hadolint
+
+**Installation:**
+```bash
+# macOS
+brew install hadolint
+
+# Linux - Download binary
+wget -O hadolint https://github.com/hadolint/hadolint/releases/latest/download/hadolint-Linux-x86_64
+chmod +x hadolint
+sudo mv hadolint /usr/local/bin/
+
+# Using Docker (no installation required)
+docker run --rm -i hadolint/hadolint < Dockerfile
+```
+
+**Usage:**
+```bash
+# Check a Dockerfile
+hadolint server-side/Dockerfile
+
+# Check all Dockerfiles in project
+find . -name "Dockerfile*" -exec hadolint {} \;
+
+# Using Docker image
+docker run --rm -i hadolint/hadolint < server-side/Dockerfile
+
+# Output formats
+hadolint --format json server-side/Dockerfile     # JSON output
+hadolint --format tty server-side/Dockerfile      # Colored terminal output
+```
+
+**Common Hadolint Rules:**
+- Pin package versions: `apt-get install package=version`
+- Use `--no-install-recommends` to reduce image size
+- Consolidate RUN instructions to reduce layers
+- Clean package cache: `apt-get clean && rm -rf /var/lib/apt/lists/*`
+- Use specific base image tags instead of `latest`
+
+**Configuration (.hadolint.yaml):**
+```yaml
+ignored:
+  - DL3059  # Allow multiple RUN instructions if needed for clarity
+failure-threshold: error  # Only fail on errors, not warnings
+```
+
+#### Git Commit Signing
+
+**Setup GPG Signing:**
+```bash
+# Generate a new GPG key (if needed)
+gpg --full-generate-key
+
+# List your GPG keys
+gpg --list-secret-keys --keyid-format=long
+
+# Configure Git to use your GPG key
+git config --global user.signingkey <your-key-id>
+git config --global commit.gpgsign true
+
+# Add GPG key to GitHub (copy the output)
+gpg --armor --export <your-key-id>
+```
+
+**Manual Signing:**
+```bash
+# Sign a single commit
+git commit -S -m "Your commit message"
+
+# Verify signatures
+git log --show-signature -1
+```
 
 ## AI Assistant Instructions
 

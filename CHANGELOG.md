@@ -13,9 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CHANGELOG.md for tracking project changes
 - Enhanced .gitignore with Linux, macOS, and Windows OS-specific entries
 - .dockerignore file for optimized Docker build context
-- Git pre-commit hook for automated ShellCheck validation
-- Git pre-push hook to prevent merging invalid scripts to main branch
-- ShellCheck integration documentation in GUIDELINE.md
+- Git pre-commit hook for automated ShellCheck and Hadolint validation
+- Git pre-push hook to prevent merging invalid scripts or Dockerfiles to main branch
+- ShellCheck and Hadolint integration documentation in GUIDELINE.md
+- Dockerfile linting with Hadolint for Docker best practices enforcement
+- Commit signing enforcement in pre-commit hook for security
 
 ### Fixed
 - Corrected shebang in server-side/run.sh (#!/bin/bash instead of #/bin/bash)

@@ -1,11 +1,32 @@
 #!/bin/bash
 
 # SSHBian Pre-commit Hook
-# Validates shell scripts with ShellCheck before allowing commits
+# Validates shell scripts with ShellCheck and Dockerfiles with Hadolint before allowing commits
 
 set -e
 
 echo "Running pre-commit checks..."
+
+# Track overall success
+overall_success=true
+
+# Check if commit is signed
+if ! git log --format="%G?" -1 HEAD 2>/dev/null | grep -q '^[GU]$' && ! git rev-parse --verify HEAD >/dev/null 2>&1; then
+    # This is the first commit or we can't check the previous commit
+    # Check if the current commit will be signed by looking at git config
+    if [ "$(git config --get commit.gpgsign)" != "true" ] && [ -z "$GIT_CONFIG_GLOBAL" ]; then
+        echo "ERROR: Commits must be signed."
+        echo "To enable commit signing:"
+        echo "  git config --global commit.gpgsign true"
+        echo "  git config --global user.signingkey <your-key-id>"
+        echo ""
+        echo "Or sign this commit manually:"
+        echo "  git commit -S"
+        echo ""
+        echo "To setup GPG signing, see: https://docs.github.com/en/authentication/managing-commit-signature-verification"
+        overall_success=false
+    fi
+fi
 
 # Check if shellcheck is installed
 if ! command -v shellcheck >/dev/null 2>&1; then
@@ -17,47 +38,106 @@ if ! command -v shellcheck >/dev/null 2>&1; then
     exit 1
 fi
 
+# Check if hadolint is installed
+if ! command -v hadolint >/dev/null 2>&1; then
+    echo "WARNING: Hadolint is not installed. Dockerfile validation will be skipped."
+    echo "To install Hadolint:"
+    echo "  macOS: brew install hadolint"
+    echo "  Linux: Download from https://github.com/hadolint/hadolint/releases"
+    echo "  Docker: Use hadolint/hadolint container"
+fi
+
 # Find all shell scripts being committed
 shell_scripts=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(sh|bash)$' || true)
 
-if [ -z "$shell_scripts" ]; then
+# Find all Dockerfiles being committed
+dockerfiles=$(git diff --cached --name-only --diff-filter=ACM | grep -E '(Dockerfile|dockerfile|\.(docker|dockerfile)$)' || true)
+
+# Check shell scripts
+if [ -n "$shell_scripts" ]; then
+    echo "Checking shell scripts with ShellCheck..."
+    
+    # Track if any scripts fail
+    failed_scripts=()
+    
+    # Check each shell script
+    for script in $shell_scripts; do
+        if [ -f "$script" ]; then
+            echo "Checking: $script"
+            
+            # Run ShellCheck on the script
+            if ! shellcheck "$script"; then
+                failed_scripts+=("$script")
+                echo "FAILED: $script"
+            else
+                echo "PASSED: $script"
+            fi
+        fi
+    done
+    
+    # Report shell script results
+    if [ ${#failed_scripts[@]} -ne 0 ]; then
+        echo ""
+        echo "ERROR: The following shell scripts failed ShellCheck validation:"
+        for script in "${failed_scripts[@]}"; do
+            echo "  - $script"
+        done
+        overall_success=false
+    else
+        echo "All shell scripts passed ShellCheck validation."
+    fi
+else
     echo "No shell scripts to check."
-    exit 0
 fi
 
-echo "Checking shell scripts with ShellCheck..."
-
-# Track if any scripts fail
-failed_scripts=()
-
-# Check each shell script
-for script in $shell_scripts; do
-    if [ -f "$script" ]; then
-        echo "Checking: $script"
-        
-        # Run ShellCheck on the script
-        if ! shellcheck "$script"; then
-            failed_scripts+=("$script")
-            echo "FAILED: $script"
-        else
-            echo "PASSED: $script"
+# Check Dockerfiles
+if [ -n "$dockerfiles" ] && command -v hadolint >/dev/null 2>&1; then
+    echo "Checking Dockerfiles with Hadolint..."
+    
+    # Track if any Dockerfiles fail
+    failed_dockerfiles=()
+    
+    # Check each Dockerfile
+    for dockerfile in $dockerfiles; do
+        if [ -f "$dockerfile" ]; then
+            echo "Checking: $dockerfile"
+            
+            # Run Hadolint on the Dockerfile
+            if ! hadolint "$dockerfile"; then
+                failed_dockerfiles+=("$dockerfile")
+                echo "FAILED: $dockerfile"
+            else
+                echo "PASSED: $dockerfile"
+            fi
         fi
+    done
+    
+    # Report Dockerfile results
+    if [ ${#failed_dockerfiles[@]} -ne 0 ]; then
+        echo ""
+        echo "ERROR: The following Dockerfiles failed Hadolint validation:"
+        for dockerfile in "${failed_dockerfiles[@]}"; do
+            echo "  - $dockerfile"
+        done
+        overall_success=false
+    else
+        echo "All Dockerfiles passed Hadolint validation."
     fi
-done
+elif [ -n "$dockerfiles" ]; then
+    echo "Skipping Dockerfile validation (Hadolint not installed)."
+fi
 
-# Report results
-if [ ${#failed_scripts[@]} -eq 0 ]; then
-    echo "All shell scripts passed ShellCheck validation."
+# Final result
+if [ "$overall_success" = true ]; then
+    echo "All pre-commit checks passed."
     exit 0
 else
     echo ""
-    echo "ERROR: The following shell scripts failed ShellCheck validation:"
-    for script in "${failed_scripts[@]}"; do
-        echo "  - $script"
-    done
+    echo "Pre-commit validation failed. Please fix the issues above."
     echo ""
-    echo "Please fix the ShellCheck warnings/errors before committing."
-    echo "Run 'shellcheck <script>' for detailed error information."
+    echo "For detailed error information:"
+    echo "  shellcheck <script>    # For shell scripts"
+    echo "  hadolint <dockerfile>  # For Dockerfiles"
     echo ""
     echo "To bypass this check (NOT RECOMMENDED), use:"
     echo "  git commit --no-verify"
