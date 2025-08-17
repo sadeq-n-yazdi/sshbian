@@ -11,6 +11,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Comprehensive README.md with quick start guide and architecture overview
 - GUIDELINE.md with detailed development guidelines and roadmap
 - CHANGELOG.md for tracking project changes
+- Enhanced .gitignore with Linux, macOS, and Windows OS-specific entries
+- .dockerignore file for optimized Docker build context
+- Git pre-commit hook for automated ShellCheck validation
+- Git pre-push hook to prevent merging invalid scripts to main branch
+- ShellCheck integration documentation in GUIDELINE.md
+
+### Fixed
+- Corrected shebang in server-side/run.sh (#!/bin/bash instead of #/bin/bash)
+
+### Development Tools
+- Git hooks located in tools/git/ for easy installation by developers
+- Automated shell script validation before commits and pushes to main
+- Comprehensive linting setup with installation and usage instructions
 
 ## [0.1.0] - 2025-08-17
 

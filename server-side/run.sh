@@ -1,4 +1,4 @@
-#/bin/bash
+#!/bin/bash
 
 docker build --tag my-ssh-box .
 # --build-arg DEV_USER_PASSWORD=atalmatal 

@@ -1,0 +1,65 @@
+#!/bin/bash
+
+# SSHBian Pre-commit Hook
+# Validates shell scripts with ShellCheck before allowing commits
+
+set -e
+
+echo "Running pre-commit checks..."
+
+# Check if shellcheck is installed
+if ! command -v shellcheck >/dev/null 2>&1; then
+    echo "ERROR: ShellCheck is not installed."
+    echo "Please install ShellCheck:"
+    echo "  macOS: brew install shellcheck"
+    echo "  Linux: apt-get install shellcheck"
+    echo "  Other: https://github.com/koalaman/shellcheck#installing"
+    exit 1
+fi
+
+# Find all shell scripts being committed
+shell_scripts=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(sh|bash)$' || true)
+
+if [ -z "$shell_scripts" ]; then
+    echo "No shell scripts to check."
+    exit 0
+fi
+
+echo "Checking shell scripts with ShellCheck..."
+
+# Track if any scripts fail
+failed_scripts=()
+
+# Check each shell script
+for script in $shell_scripts; do
+    if [ -f "$script" ]; then
+        echo "Checking: $script"
+        
+        # Run ShellCheck on the script
+        if ! shellcheck "$script"; then
+            failed_scripts+=("$script")
+            echo "FAILED: $script"
+        else
+            echo "PASSED: $script"
+        fi
+    fi
+done
+
+# Report results
+if [ ${#failed_scripts[@]} -eq 0 ]; then
+    echo "All shell scripts passed ShellCheck validation."
+    exit 0
+else
+    echo ""
+    echo "ERROR: The following shell scripts failed ShellCheck validation:"
+    for script in "${failed_scripts[@]}"; do
+        echo "  - $script"
+    done
+    echo ""
+    echo "Please fix the ShellCheck warnings/errors before committing."
+    echo "Run 'shellcheck <script>' for detailed error information."
+    echo ""
+    echo "To bypass this check (NOT RECOMMENDED), use:"
+    echo "  git commit --no-verify"
+    exit 1
+fi

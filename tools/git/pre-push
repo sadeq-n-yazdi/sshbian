@@ -1,0 +1,70 @@
+#!/bin/bash
+
+# SSHBian Pre-push Hook
+# Prevents pushing to main branch if shell scripts fail ShellCheck
+
+set -e
+
+# Read the input from git
+while IFS=' ' read -r local_ref local_sha remote_ref remote_sha; do
+    # Check if we're pushing to main branch
+    if [[ $remote_ref == *"refs/heads/main"* ]]; then
+        echo "Pushing to main branch - running comprehensive ShellCheck validation..."
+        
+        # Check if shellcheck is installed
+        if ! command -v shellcheck >/dev/null 2>&1; then
+            echo "ERROR: ShellCheck is not installed."
+            echo "Please install ShellCheck before pushing to main:"
+            echo "  macOS: brew install shellcheck"
+            echo "  Linux: apt-get install shellcheck"
+            exit 1
+        fi
+        
+        # Find all shell scripts in the repository
+        shell_scripts=$(find . -name "*.sh" -type f | grep -v ".git/" || true)
+        
+        if [ -z "$shell_scripts" ]; then
+            echo "No shell scripts found to check."
+            continue
+        fi
+        
+        echo "Validating all shell scripts before push to main..."
+        
+        # Track failures
+        failed_scripts=()
+        
+        # Check each shell script
+        for script in $shell_scripts; do
+            echo "Checking: $script"
+            
+            if ! shellcheck "$script"; then
+                failed_scripts+=("$script")
+                echo "FAILED: $script"
+            else
+                echo "PASSED: $script"
+            fi
+        done
+        
+        # Report results
+        if [ ${#failed_scripts[@]} -eq 0 ]; then
+            echo "All shell scripts passed ShellCheck validation for main branch."
+        else
+            echo ""
+            echo "ERROR: Cannot push to main branch. The following shell scripts failed ShellCheck:"
+            for script in "${failed_scripts[@]}"; do
+                echo "  - $script"
+            done
+            echo ""
+            echo "Please fix all ShellCheck warnings/errors before pushing to main."
+            echo "Run 'shellcheck <script>' for detailed error information."
+            echo ""
+            echo "To push to a feature branch instead:"
+            echo "  git push origin HEAD:feature-branch-name"
+            exit 1
+        fi
+    else
+        echo "Pushing to non-main branch: $(basename "$remote_ref")"
+    fi
+done
+
+exit 0

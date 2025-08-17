@@ -205,6 +205,50 @@ docker exec sshbian-container ps aux
 - **Commit Messages**: Descriptive, imperative mood
 - **Code Review**: All changes reviewed before merge
 
+#### Git Hooks for Quality Control
+
+The repository includes automated git hooks to maintain code quality:
+
+**Pre-commit Hook** (`.git/hooks/pre-commit`):
+- Automatically runs ShellCheck on all shell scripts being committed
+- Prevents commits if any shell script fails validation
+- Provides clear error messages and fix suggestions
+- Can be bypassed with `git commit --no-verify` (not recommended)
+
+**Pre-push Hook** (`.git/hooks/pre-push`):
+- Validates ALL shell scripts before pushing to main branch
+- Prevents merging broken scripts into main branch
+- Allows pushes to feature branches even with warnings
+- Ensures main branch always has clean, validated code
+
+**Hook Installation** (for new clones):
+```bash
+# Copy hooks from tools/git/ to .git/hooks/
+cp tools/git/pre-commit .git/hooks/
+cp tools/git/pre-push .git/hooks/
+
+# Make hooks executable
+chmod +x .git/hooks/pre-commit .git/hooks/pre-push
+
+# Verify hooks are installed
+ls -la .git/hooks/pre-*
+
+# Test pre-commit hook
+echo "echo 'test'" > test.sh && git add test.sh && git commit -m "test"
+
+# Test pre-push hook (will validate all scripts)
+git push origin main
+```
+
+**Bypassing Hooks** (emergency only):
+```bash
+# Skip pre-commit validation (not recommended)
+git commit --no-verify -m "emergency fix"
+
+# Skip pre-push validation (not recommended)
+git push --no-verify origin main
+```
+
 ### Testing Requirements
 - **Functional Tests**: All core functionality tested
 - **Security Tests**: Authentication and authorization verified
@@ -343,6 +387,51 @@ docker logs -f sshbian-dev
 - Dockerfile must follow best practices (hadolint)
 - Changes must not break existing functionality
 - Security implications must be documented
+
+#### Shell Script Linting with ShellCheck
+
+**Installation:**
+```bash
+# macOS
+brew install shellcheck
+
+# Linux (Debian/Ubuntu)
+apt-get install shellcheck
+
+# Linux (other distributions)
+snap install shellcheck           # Using snap
+dnf install ShellCheck           # Fedora/RHEL
+pacman -S shellcheck             # Arch Linux
+```
+
+**Usage:**
+```bash
+# Check a single script
+shellcheck server-side/run.sh
+
+# Check all shell scripts in project
+find . -name "*.sh" -exec shellcheck {} \;
+
+# Output formats
+shellcheck -f gcc server-side/run.sh     # GCC-style output for IDEs
+shellcheck -f json server-side/run.sh    # JSON output for automation
+shellcheck -f tty server-side/run.sh     # Colored terminal output
+```
+
+**Pre-commit Validation:**
+```bash
+# Validate scripts before committing
+shellcheck server-side/run.sh && echo "Script passes ShellCheck"
+
+# Add to development workflow
+shellcheck server-side/*.sh && docker build -t sshbian-test server-side/
+```
+
+**Common ShellCheck Fixes:**
+- Quote variables: `"$HOME"` instead of `$HOME`
+- Check command success: `if command -v docker; then`
+- Use `[[ ]]` for conditionals instead of `[ ]`
+- Handle empty variables: `${VAR:-default}`
 
 ## AI Assistant Instructions
 
