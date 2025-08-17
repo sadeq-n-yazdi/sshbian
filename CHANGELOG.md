@@ -20,6 +20,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Commit signing enforcement in pre-commit hook for security
 - Markdown linting with Vale (Go-based) for technical documentation quality
 - Configuration files for all linters (.vale.ini, .hadolint.yaml, .shellcheckrc)
+- GitHub issue templates for bug reports, feature requests, and questions
+- Pull request template with comprehensive checklist and security considerations
+- Issue template configuration with security vulnerability reporting
 
 ### Fixed
 - Corrected shebang in server-side/run.sh (#!/bin/bash instead of #/bin/bash)
