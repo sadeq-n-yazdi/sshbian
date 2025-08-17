@@ -47,11 +47,23 @@ if ! command -v hadolint >/dev/null 2>&1; then
     echo "  Docker: Use hadolint/hadolint container"
 fi
 
+# Check if vale is installed
+if ! command -v vale >/dev/null 2>&1; then
+    echo "WARNING: Vale is not installed. Markdown validation will be skipped."
+    echo "To install Vale:"
+    echo "  macOS: brew install vale"
+    echo "  Linux: Download from https://github.com/errata-ai/vale/releases"
+    echo "  Go: go install github.com/errata-ai/vale/v3/cmd/vale@latest"
+fi
+
 # Find all shell scripts being committed
 shell_scripts=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(sh|bash)$' || true)
 
 # Find all Dockerfiles being committed
 dockerfiles=$(git diff --cached --name-only --diff-filter=ACM | grep -E '(Dockerfile|dockerfile|\.(docker|dockerfile)$)' || true)
+
+# Find all Markdown files being committed
+markdown_files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(md|markdown)$' || true)
 
 # Check shell scripts
 if [ -n "$shell_scripts" ]; then
@@ -127,6 +139,43 @@ elif [ -n "$dockerfiles" ]; then
     echo "Skipping Dockerfile validation (Hadolint not installed)."
 fi
 
+# Check Markdown files
+if [ -n "$markdown_files" ] && command -v vale >/dev/null 2>&1; then
+    echo "Checking Markdown files with Vale..."
+    
+    # Track if any Markdown files fail
+    failed_markdown=()
+    
+    # Check each Markdown file
+    for mdfile in $markdown_files; do
+        if [ -f "$mdfile" ]; then
+            echo "Checking: $mdfile"
+            
+            # Run Vale on the Markdown file
+            if ! vale "$mdfile"; then
+                failed_markdown+=("$mdfile")
+                echo "FAILED: $mdfile"
+            else
+                echo "PASSED: $mdfile"
+            fi
+        fi
+    done
+    
+    # Report Markdown results
+    if [ ${#failed_markdown[@]} -ne 0 ]; then
+        echo ""
+        echo "ERROR: The following Markdown files failed Vale validation:"
+        for mdfile in "${failed_markdown[@]}"; do
+            echo "  - $mdfile"
+        done
+        overall_success=false
+    else
+        echo "All Markdown files passed Vale validation."
+    fi
+elif [ -n "$markdown_files" ]; then
+    echo "Skipping Markdown validation (Vale not installed)."
+fi
+
 # Final result
 if [ "$overall_success" = true ]; then
     echo "All pre-commit checks passed."
@@ -138,6 +187,7 @@ else
     echo "For detailed error information:"
     echo "  shellcheck <script>    # For shell scripts"
     echo "  hadolint <dockerfile>  # For Dockerfiles"
+    echo "  vale <markdown>        # For Markdown files"
     echo ""
     echo "To bypass this check (NOT RECOMMENDED), use:"
     echo "  git commit --no-verify"

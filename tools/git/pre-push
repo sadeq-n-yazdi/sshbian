@@ -37,6 +37,9 @@ while IFS=' ' read -r local_ref local_sha remote_ref remote_sha; do
         # Find all Dockerfiles in the repository
         dockerfiles=$(find . -name "Dockerfile*" -o -name "dockerfile*" -o -name "*.dockerfile" -o -name "*.docker" | grep -v ".git/" || true)
         
+        # Find all Markdown files in the repository
+        markdown_files=$(find . -name "*.md" -o -name "*.markdown" | grep -v ".git/" || true)
+        
         # Validate shell scripts
         if [ -n "$shell_scripts" ]; then
             echo "Validating shell scripts..."
@@ -103,6 +106,40 @@ while IFS=' ' read -r local_ref local_sha remote_ref remote_sha; do
             echo "Skipping Dockerfile validation (Hadolint not installed)."
         fi
         
+        # Validate Markdown files
+        if [ -n "$markdown_files" ] && command -v vale >/dev/null 2>&1; then
+            echo "Validating Markdown files..."
+            
+            # Track failures
+            failed_markdown=()
+            
+            # Check each Markdown file
+            for mdfile in $markdown_files; do
+                echo "Checking: $mdfile"
+                
+                if ! vale "$mdfile"; then
+                    failed_markdown+=("$mdfile")
+                    echo "FAILED: $mdfile"
+                else
+                    echo "PASSED: $mdfile"
+                fi
+            done
+            
+            # Report Markdown results
+            if [ ${#failed_markdown[@]} -ne 0 ]; then
+                echo ""
+                echo "ERROR: The following Markdown files failed Vale validation:"
+                for mdfile in "${failed_markdown[@]}"; do
+                    echo "  - $mdfile"
+                done
+                overall_success=false
+            else
+                echo "All Markdown files passed validation."
+            fi
+        elif [ -n "$markdown_files" ]; then
+            echo "Skipping Markdown validation (Vale not installed)."
+        fi
+        
         # Final result for main branch push
         if [ "$overall_success" = true ]; then
             echo "All validation checks passed for main branch."
@@ -114,6 +151,7 @@ while IFS=' ' read -r local_ref local_sha remote_ref remote_sha; do
             echo "For detailed error information:"
             echo "  shellcheck <script>    # For shell scripts"
             echo "  hadolint <dockerfile>  # For Dockerfiles"
+            echo "  vale <markdown>        # For Markdown files"
             echo ""
             echo "To push to a feature branch instead:"
             echo "  git push origin HEAD:feature-branch-name"

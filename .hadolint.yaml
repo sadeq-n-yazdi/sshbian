@@ -1,0 +1,33 @@
+# Hadolint configuration for SSHBian project
+# See https://github.com/hadolint/hadolint#configure
+
+# Ignore specific rules that don't apply to our use case
+ignored:
+  - DL3059  # Multiple consecutive RUN instructions (allow for clarity)
+  - DL3008  # Pin versions in apt get install (allow for latest packages)
+  - DL3009  # Delete apt-get lists (we do this manually)
+  - DL3015  # Avoid additional packages by specifying --no-install-recommends (allow for completeness)
+
+# Set failure threshold - only fail on errors, warnings are allowed
+failure-threshold: error
+
+# Trusted registries for base images
+trusted-registries:
+  - docker.io
+  - registry-1.docker.io
+
+# Override specific rules with custom settings
+override:
+  error: []
+  warning: []
+  info: []
+  style: []
+
+# Format for output (can be: tty, json, checkstyle, codeclimate, gnu, codacy, sonarqube, sarif)
+format: tty
+
+# Disable specific rules for specific lines
+# Use: # hadolint ignore=DL3008,DL3009
+# inline-ignores:
+#   - DL3008
+#   - DL3009

@@ -1,0 +1,25 @@
+# ShellCheck configuration for SSHBian project
+# See https://github.com/koalaman/shellcheck/wiki/Ignore
+
+# Disable specific checks that don't apply to our use case
+
+# SC2034: Unused variables (allow for documentation/future use)
+disable=SC2034
+
+# SC1091: Not following sourced files (allow for dynamic sourcing)
+# disable=SC1091
+
+# SC2086: Double quote to prevent globbing (allow controlled globbing)
+# disable=SC2086
+
+# SC2164: Use 'cd ... || exit' or 'cd ... || return' (allow simple cd usage)
+# disable=SC2164
+
+# Enable all checks by default (comment out disables above to re-enable)
+# external-sources=true
+
+# Format for output
+# format=tty
+
+# Source additional ShellCheck configuration if needed
+# source-path=SCRIPTDIR

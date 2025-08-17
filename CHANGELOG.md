@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ShellCheck and Hadolint integration documentation in GUIDELINE.md
 - Dockerfile linting with Hadolint for Docker best practices enforcement
 - Commit signing enforcement in pre-commit hook for security
+- Markdown linting with Vale (Go-based) for technical documentation quality
+- Configuration files for all linters (.vale.ini, .hadolint.yaml, .shellcheckrc)
 
 ### Fixed
 - Corrected shebang in server-side/run.sh (#!/bin/bash instead of #/bin/bash)

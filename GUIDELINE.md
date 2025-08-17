@@ -213,12 +213,13 @@ The repository includes automated git hooks to maintain code quality:
 - Enforces signed commits (requires GPG configuration)
 - Automatically runs ShellCheck on all shell scripts being committed
 - Automatically runs Hadolint on all Dockerfiles being committed
+- Automatically runs Vale on all Markdown files being committed
 - Prevents commits if any file fails validation or commit is unsigned
 - Provides clear error messages and fix suggestions
 - Can be bypassed with `git commit --no-verify` (not recommended)
 
 **Pre-push Hook** (`tools/git/pre-push`):
-- Validates ALL shell scripts and Dockerfiles before pushing to main branch
+- Validates ALL shell scripts, Dockerfiles, and Markdown files before pushing to main branch
 - Prevents merging broken files into main branch
 - Allows pushes to feature branches even with warnings
 - Ensures main branch always has clean, validated code
@@ -507,6 +508,47 @@ git commit -S -m "Your commit message"
 # Verify signatures
 git log --show-signature -1
 ```
+
+#### Markdown Linting with Vale (Go-based)
+
+**Installation:**
+```bash
+# macOS
+brew install vale
+
+# Linux - Download binary
+wget -O vale.tar.gz https://github.com/errata-ai/vale/releases/latest/download/vale_*_Linux_64-bit.tar.gz
+tar -xzf vale.tar.gz
+sudo mv vale /usr/local/bin/
+
+# Using Go
+go install github.com/errata-ai/vale/v3/cmd/vale@latest
+
+# Using Docker
+docker run --rm -v $(pwd):/src jdkato/vale .
+```
+
+**Usage:**
+```bash
+# Check a Markdown file
+vale README.md
+
+# Check all Markdown files
+vale *.md
+
+# Sync Vale packages (first time setup)
+vale sync
+
+# Output formats
+vale --output=JSON README.md     # JSON output
+vale --config=.vale.ini *.md     # Use specific config
+```
+
+**Configuration (.vale.ini):**
+- Technical writing rules optimized for developer documentation
+- Allows technical terms and abbreviations common in software projects
+- Configurable strictness levels for different file types
+- Integrated with write-good and Microsoft/Google style guides
 
 ## AI Assistant Instructions
 
