@@ -1,0 +1,19 @@
+# Global code owners for the SSHBian repository
+# These users will be automatically requested for review on all pull requests
+
+* @sadeqn @sadeq-n-yazdi
+
+# Specific ownership for critical components
+
+# Docker and deployment files
+/server-side/ @sadeqn @sadeq-n-yazdi
+*.dockerfile @sadeqn @sadeq-n-yazdi
+docker-compose*.yml @sadeqn @sadeq-n-yazdi
+
+# Security and configuration
+/.github/ @sadeqn @sadeq-n-yazdi
+/tools/git/ @sadeqn @sadeq-n-yazdi
+.gitignore @sadeqn @sadeq-n-yazdi
+
+# Documentation
+*.md @sadeqn @sadeq-n-yazdi
